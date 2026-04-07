@@ -1,0 +1,36 @@
+name: AI Seminar Agent (무료 크롤링) → Notion
+
+on:
+  schedule:
+    - cron: "0 22 1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31 * *"
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 크롤링 + Notion 업로드
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+        run: python main.py
+
+      - name: 결과 파일 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-info-${{ github.run_number }}
+          path: ai_info_results/
+          retention-days: 30
