@@ -9,6 +9,7 @@ from pathlib import Path
 _NOW   = datetime.now()
 _YEAR  = _NOW.year
 _MONTH = _NOW.month
+_DAY   = _NOW.day
 
 # ── 출력 경로 ──────────────────────────────────────────────────
 OUTPUT_DIR = Path(__file__).parent.parent / "ai_info_results"
@@ -36,11 +37,11 @@ SEARCH_CATEGORIES = [
         "id": "domestic_seminar",
         "label": "🇰🇷 국내 AI 세미나 / 컨퍼런스",
         "queries": [
-            f"{_YEAR}년 {_MONTH}월 AI 머신러닝 딥러닝 컨퍼런스 세미나 한국",
-            f"{_YEAR}년 {_MONTH}월 MLOps AI 엔지니어 국내 컨퍼런스 신청",
+            f"{_YEAR}년 {_MONTH}월 {_DAY}일 AI 머신러닝 딥러닝 컨퍼런스 세미나 한국",
+            f"{_YEAR}년 {_MONTH}월 {_DAY}일 MLOps AI 엔지니어 국내 컨퍼런스 신청",
             f"DEVIEW NDC GDG AI 세미나 {_YEAR} 일정",
             f"{_YEAR} AI 개발자 컨퍼런스 한국 등록",
-            f"{_YEAR}년 {_MONTH}월 AI LLM 밋업 한국",
+            f"{_YEAR}년 {_MONTH}월 {_DAY}일 AI LLM 밋업 한국",
         ],
         "relevance_tag": "AI엔지니어/국내컨퍼런스",
     },
@@ -49,7 +50,7 @@ SEARCH_CATEGORIES = [
         "label": "🌏 해외 AI 세미나 / 컨퍼런스",
         "queries": [
             f"NeurIPS ICML ICLR {_YEAR} conference registration",
-            f"AI ML engineering conference {_YEAR} {_MONTH:02d} schedule",
+            f"AI ML engineering conference {_YEAR} {_MONTH:02d} {_DAY:02d} schedule",
             f"MLOps LLM GenAI summit conference {_YEAR}",
             f"AI developer conference {_YEAR} upcoming",
             f"machine learning workshop {_YEAR} call for participation",
@@ -75,7 +76,7 @@ SEARCH_CATEGORIES = [
             f"AI 대학원 특강 워크숍 {_YEAR} 한국 등록",
             f"카이스트 포스텍 서울대 AI 특강 세미나 {_YEAR}",
             f"AI winter school summer school {_YEAR} Korea",
-            f"AI 연구 워크숍 {_YEAR}년 {_MONTH}월",
+            f"AI 연구 워크숍 {_YEAR}년 {_MONTH}월 {_DAY}일",
         ],
         "relevance_tag": "AI엔지니어/워크숍/대학원",
     },
@@ -83,7 +84,7 @@ SEARCH_CATEGORIES = [
         "id": "hackathon",
         "label": "🏆 AI 해커톤 / 경진대회",
         "queries": [
-            f"AI 해커톤 {_YEAR}년 {_MONTH}월 한국 참가",
+            f"AI 해커톤 {_YEAR}년 {_MONTH}월 {_DAY}일 한국 참가",
             f"AI hackathon competition {_YEAR} open registration",
             f"LLM AI 경진대회 {_YEAR} 신청",
         ],
