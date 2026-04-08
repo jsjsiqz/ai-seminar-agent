@@ -3,7 +3,10 @@ config.py — 전체 프로젝트 설정
 검색 쿼리·키워드 필터·출력 경로를 이 파일에서만 수정하세요.
 """
 
+from datetime import datetime
 from pathlib import Path
+
+_YEAR = datetime.now().year
 
 # ── 출력 경로 ──────────────────────────────────────────────────
 OUTPUT_DIR = Path(__file__).parent.parent / "ai_info_results"
@@ -30,9 +33,9 @@ SEARCH_CATEGORIES = [
         "id": "domestic_seminar",
         "label": "🇰🇷 국내 AI 세미나 / 컨퍼런스",
         "queries": [
-            "2025 AI 머신러닝 딥러닝 컨퍼런스 세미나 한국 일정",
-            "2025 MLOps AI 엔지니어 국내 컨퍼런스 신청",
-            "DEVIEW NDC AI 세미나 2025 일정",
+            f"{_YEAR} AI 머신러닝 딥러닝 컨퍼런스 세미나 한국 일정",
+            f"{_YEAR} MLOps AI 엔지니어 국내 컨퍼런스 신청",
+            f"DEVIEW NDC AI 세미나 {_YEAR} 일정",
         ],
         "relevance_tag": "AI엔지니어/국내컨퍼런스",
     },
@@ -40,9 +43,9 @@ SEARCH_CATEGORIES = [
         "id": "global_seminar",
         "label": "🌏 해외 AI 세미나 / 컨퍼런스",
         "queries": [
-            "NeurIPS ICML ICLR 2025 conference registration",
-            "AI ML engineering conference 2025 schedule",
-            "MLOps LLM summit conference 2025",
+            f"NeurIPS ICML ICLR {_YEAR} conference registration",
+            f"AI ML engineering conference {_YEAR} schedule",
+            f"MLOps LLM summit conference {_YEAR}",
         ],
         "relevance_tag": "AI엔지니어/해외컨퍼런스",
     },
@@ -50,9 +53,9 @@ SEARCH_CATEGORIES = [
         "id": "online_course",
         "label": "💻 온라인 강의 (Udemy / Coursera 등)",
         "queries": [
-            "best AI MLOps LLM engineering courses Udemy Coursera 2025",
-            "LangChain RAG vector database online course 2025",
-            "딥러닝 LLM 파인튜닝 온라인 강의 추천 2025",
+            f"best AI MLOps LLM engineering courses Udemy Coursera {_YEAR}",
+            f"LangChain RAG vector database online course {_YEAR}",
+            f"딥러닝 LLM 파인튜닝 온라인 강의 추천 {_YEAR}",
         ],
         "relevance_tag": "딥러닝/LLM/온라인강의",
     },
@@ -60,9 +63,9 @@ SEARCH_CATEGORIES = [
         "id": "academic_workshop",
         "label": "🎓 대학원 특강 / 워크숍",
         "queries": [
-            "AI 대학원 특강 워크숍 2025 한국 등록",
-            "카이스트 포스텍 서울대 AI 특강 세미나 2025",
-            "AI winter school summer school 2025 Korea",
+            f"AI 대학원 특강 워크숍 {_YEAR} 한국 등록",
+            f"카이스트 포스텍 서울대 AI 특강 세미나 {_YEAR}",
+            f"AI winter school summer school {_YEAR} Korea",
         ],
         "relevance_tag": "AI엔지니어/워크숍/대학원",
     },
