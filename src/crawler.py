@@ -1,8 +1,8 @@
 """
-crawler.py — Google 검색 + 페이지 본문 크롤링 (API 키 불필요)
+crawler.py — DuckDuckGo 검색 + 페이지 본문 크롤링 (API 키 불필요)
 
 흐름:
-  1. googlesearch-python 으로 검색 결과 URL 수집
+  1. duckduckgo-search 로 검색 결과 URL 수집
   2. requests + BeautifulSoup 으로 각 페이지 본문 추출
   3. 관련성 키워드 필터링 후 반환
 """
@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 import requests
 from bs4 import BeautifulSoup
-from googlesearch import search as google_search
+from ddgs import DDGS
 
 from src.config import (
     SEARCH_RESULTS_PER_QUERY,
@@ -95,9 +95,11 @@ def crawl_category(category: dict) -> list[PageResult]:
         print(f"    🔍 {query[:55]}...")
 
         try:
-            urls = list(google_search(query, num_results=SEARCH_RESULTS_PER_QUERY, lang="ko"))
+            with DDGS() as ddgs:
+                hits = ddgs.text(query, max_results=SEARCH_RESULTS_PER_QUERY)
+            urls = [h["href"] for h in hits if h.get("href")]
         except Exception as e:
-            print(f"    ⚠️  Google 검색 오류: {e}")
+            print(f"    ⚠️  DuckDuckGo 검색 오류: {e}")
             time.sleep(REQUEST_DELAY_SEC * 2)
             continue
 
