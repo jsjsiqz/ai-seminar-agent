@@ -22,6 +22,8 @@ from src.config import (
     MIN_TEXT_LENGTH,
     MAX_TEXT_LENGTH,
     RELEVANCE_KEYWORDS,
+    EVENT_REQUIRED_KEYWORDS,
+    SKIP_DOMAINS,
 )
 
 _HEADERS = {
@@ -31,12 +33,6 @@ _HEADERS = {
         "Chrome/124.0.0.0 Safari/537.36"
     ),
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
-}
-
-# 크롤링 불가 도메인 (로그인 필요 등)
-_SKIP_DOMAINS = {
-    "facebook.com", "instagram.com", "twitter.com", "x.com",
-    "linkedin.com", "naver.me", "youtube.com",
 }
 
 
@@ -52,7 +48,7 @@ class PageResult:
 
 
 def _is_skippable(url: str) -> bool:
-    return any(d in url for d in _SKIP_DOMAINS)
+    return any(d in url for d in SKIP_DOMAINS)
 
 
 def _extract_text(html: str) -> tuple[str, str]:
@@ -81,7 +77,9 @@ def _extract_text(html: str) -> tuple[str, str]:
 
 def _is_relevant(text: str) -> bool:
     text_lower = text.lower()
-    return any(kw.lower() in text_lower for kw in RELEVANCE_KEYWORDS)
+    has_ai = any(kw.lower() in text_lower for kw in RELEVANCE_KEYWORDS)
+    has_event = any(kw.lower() in text_lower for kw in EVENT_REQUIRED_KEYWORDS)
+    return has_ai and has_event
 
 
 def crawl_category(category: dict) -> list[PageResult]:

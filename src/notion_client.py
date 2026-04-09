@@ -38,7 +38,7 @@ def _norm_price(raw: str) -> str:
     return "미확인"
 
 
-def _build_page(item: dict, db_id: str) -> dict:
+def _build_props(item: dict) -> dict:
     price = _norm_price(item.get("price", ""))
     url   = item.get("url", "")
     tags  = [{"name": t.strip()}
@@ -58,8 +58,11 @@ def _build_page(item: dict, db_id: str) -> dict:
         props["URL"] = {"url": url}
     if tags:
         props["태그"] = {"multi_select": tags}
+    return props
 
-    page: dict = {"parent": {"database_id": db_id}, "properties": props}
+
+def _build_page(item: dict, db_id: str) -> dict:
+    page: dict = {"parent": {"database_id": db_id}, "properties": _build_props(item)}
     if s := item.get("summary"):
         page["children"] = [{"object": "block", "type": "paragraph",
                               "paragraph": {"rich_text": [{"type": "text",
@@ -67,43 +70,67 @@ def _build_page(item: dict, db_id: str) -> dict:
     return page
 
 
-def _existing_titles(token: str, db_id: str) -> set[str]:
-    try:
-        res = _req("POST", f"/databases/{db_id}/query", token,
-                   {"page_size": 100,
-                    "filter": {"timestamp": "created_time",
-                               "created_time": {"past_week": {}}}})
-        return {
-            page["properties"]["이름"]["rich_text"][0]["plain_text"].strip()
-            for page in res.get("results", [])
-            if page["properties"].get("이름", {}).get("rich_text")
-        }
-    except Exception:
-        return set()
+def _existing_by_url(token: str, db_id: str) -> dict[str, str]:
+    """DB 전체를 순회해 {url: page_id} 매핑 반환."""
+    mapping: dict[str, str] = {}
+    body: dict = {"page_size": 100}
+    while True:
+        try:
+            res = _req("POST", f"/databases/{db_id}/query", token, body)
+        except Exception:
+            break
+        for page in res.get("results", []):
+            url_prop = page.get("properties", {}).get("URL", {})
+            url_val = url_prop.get("url") or ""
+            if url_val:
+                mapping[url_val] = page["id"]
+        if not res.get("has_more"):
+            break
+        body["start_cursor"] = res["next_cursor"]
+    return mapping
 
 
 def upload(items: list[dict]) -> dict[str, int]:
     token = os.environ["NOTION_TOKEN"]
     db_id = os.environ["NOTION_DATABASE_ID"].replace("-", "")
 
-    print(f"\n  📓 Notion 업로드 시작 (총 {len(items)}건)")
-    existing = _existing_titles(token, db_id)
-    print(f"  기존 DB 항목(최근 1주): {len(existing)}건")
+    # 만료된 항목 제외
+    valid_items = [i for i in items if not i.get("is_expired", False)]
+    expired_count = len(items) - len(valid_items)
+    if expired_count:
+        print(f"\n  ⏭️  만료된 일정 {expired_count}건 제외")
 
-    added = skipped = failed = 0
-    for item in items:
+    print(f"\n  📓 Notion 업로드 시작 (총 {len(valid_items)}건)")
+    existing = _existing_by_url(token, db_id)
+    print(f"  기존 DB 항목: {len(existing)}건")
+
+    added = updated = skipped = failed = 0
+    for item in valid_items:
+        url = item.get("url", "")
+        props = _build_props(item)
         title = item.get("title", "").strip()
-        if title in existing:
-            skipped += 1
-            continue
-        try:
-            _req("POST", "/pages", token, _build_page(item, db_id))
-            existing.add(title)
-            added += 1
-            print(f"  ✅ 추가: {title[:55]}")
-        except urllib.error.HTTPError as e:
-            print(f"  ❌ 실패: {title[:45]} → {e.code}: {e.read().decode()[:150]}")
-            failed += 1
 
-    print(f"\n  결과: 추가 {added}건 / 중복 {skipped}건 / 실패 {failed}건")
-    return {"added": added, "skipped": skipped, "failed": failed}
+        if url and url in existing:
+            # 이미 존재 → PATCH로 업데이트
+            page_id = existing[url]
+            try:
+                _req("PATCH", f"/pages/{page_id}", token, {"properties": props})
+                updated += 1
+                print(f"  🔄 수정: {title[:55]}")
+            except urllib.error.HTTPError as e:
+                print(f"  ❌ 수정 실패: {title[:45]} → {e.code}: {e.read().decode()[:150]}")
+                failed += 1
+        else:
+            # 신규 → POST
+            try:
+                _req("POST", "/pages", token, _build_page(item, db_id))
+                if url:
+                    existing[url] = ""  # 중복 방지용
+                added += 1
+                print(f"  ✅ 추가: {title[:55]}")
+            except urllib.error.HTTPError as e:
+                print(f"  ❌ 추가 실패: {title[:45]} → {e.code}: {e.read().decode()[:150]}")
+                failed += 1
+
+    print(f"\n  결과: 추가 {added}건 / 수정 {updated}건 / 실패 {failed}건 / 만료제외 {expired_count}건")
+    return {"added": added, "updated": updated, "skipped": skipped, "failed": failed}
