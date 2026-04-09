@@ -46,11 +46,11 @@ def _build_page(item: dict, db_id: str) -> dict:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     props: dict = {
-        "이름":    {"title": [{"text": {"content": item.get("title", "제목 없음")[:100]}}]},
-        "카테고리": {"select": {"name": item.get("category_label", "기타")[:100]}},
+        "":        {"title": [{"text": {"content": item.get("title", "제목 없음")[:100]}}]},
+        "이름":    {"rich_text": [{"text": {"content": item.get("title", "제목 없음")[:100]}}]},
+        "카테고리": {"rich_text": [{"text": {"content": item.get("category_label", "기타")[:100]}}]},
         "유형":    {"select": {"name": item.get("type", "미확인")[:100]}},
         "날짜":    {"rich_text": [{"text": {"content": item.get("date", "미확인")[:200]}}]},
-        "장소":    {"rich_text": [{"text": {"content": item.get("location", "미확인")[:200]}}]},
         "가격":    {"select": {"name": price}},
         "수집일":  {"date": {"start": today}},
     }
@@ -74,9 +74,9 @@ def _existing_titles(token: str, db_id: str) -> set[str]:
                     "filter": {"timestamp": "created_time",
                                "created_time": {"past_week": {}}}})
         return {
-            page["properties"]["이름"]["title"][0]["plain_text"].strip()
+            page["properties"]["이름"]["rich_text"][0]["plain_text"].strip()
             for page in res.get("results", [])
-            if page["properties"].get("이름", {}).get("title")
+            if page["properties"].get("이름", {}).get("rich_text")
         }
     except Exception:
         return set()
