@@ -94,18 +94,12 @@ def upload(items: list[dict]) -> dict[str, int]:
     token = os.environ["NOTION_TOKEN"]
     db_id = os.environ["NOTION_DATABASE_ID"].replace("-", "")
 
-    # 만료된 항목 제외
-    valid_items = [i for i in items if not i.get("is_expired", False)]
-    expired_count = len(items) - len(valid_items)
-    if expired_count:
-        print(f"\n  ⏭️  만료된 일정 {expired_count}건 제외")
-
-    print(f"\n  📓 Notion 업로드 시작 (총 {len(valid_items)}건)")
+    print(f"\n  📓 Notion 업로드 시작 (총 {len(items)}건)")
     existing = _existing_by_url(token, db_id)
     print(f"  기존 DB 항목: {len(existing)}건")
 
     added = updated = skipped = failed = 0
-    for item in valid_items:
+    for item in items:
         url = item.get("url", "")
         props = _build_props(item)
         title = item.get("title", "").strip()
@@ -132,5 +126,5 @@ def upload(items: list[dict]) -> dict[str, int]:
                 print(f"  ❌ 추가 실패: {title[:45]} → {e.code}: {e.read().decode()[:150]}")
                 failed += 1
 
-    print(f"\n  결과: 추가 {added}건 / 수정 {updated}건 / 실패 {failed}건 / 만료제외 {expired_count}건")
+    print(f"\n  결과: 추가 {added}건 / 수정 {updated}건 / 실패 {failed}건")
     return {"added": added, "updated": updated, "skipped": skipped, "failed": failed}
