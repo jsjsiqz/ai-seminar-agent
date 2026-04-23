@@ -61,6 +61,7 @@ def run_crawl_and_upload(skip_notion: bool):
 
     if not skip_notion:
         _check_env("NOTION_TOKEN", "NOTION_DATABASE_ID")
+        notion_client.remove_expired()
         result = notion_client.upload(flat)
         if result["failed"] > 0:
             sys.exit(1)
