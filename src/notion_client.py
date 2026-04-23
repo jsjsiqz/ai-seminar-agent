@@ -180,6 +180,60 @@ def remove_expired() -> int:
     return removed
 
 
+def deduplicate_existing() -> int:
+    """기존 Notion DB에서 (제목+날짜) 기준 중복 항목을 찾아 아카이브."""
+    token = os.environ["NOTION_TOKEN"]
+    db_id = os.environ["NOTION_DATABASE_ID"].replace("-", "")
+
+    # 전체 페이지 수집
+    groups: dict[tuple, list[str]] = {}  # (title, date) → [page_id, ...]
+    body: dict = {"page_size": 100}
+    print(f"\n  🔍 기존 DB 중복 분석 중...")
+    while True:
+        try:
+            res = _req("POST", f"/databases/{db_id}/query", token, body)
+        except Exception:
+            break
+        for page in res.get("results", []):
+            pid = page["id"]
+            props = page.get("properties", {})
+
+            title_list = props.get("", {}).get("title", [])
+            title_val = (title_list[0].get("plain_text", "") if title_list else "").strip()[:100]
+
+            date_rt = props.get("날짜", {}).get("rich_text", [])
+            date_val = (date_rt[0].get("plain_text", "") if date_rt else "").strip()[:200]
+
+            if not title_val:
+                continue
+            key = (title_val, date_val)
+            groups.setdefault(key, []).append(pid)
+
+        if not res.get("has_more"):
+            break
+        body["start_cursor"] = res["next_cursor"]
+
+    # 중복 그룹 처리: 첫 번째만 남기고 나머지 아카이브
+    removed = 0
+    dup_groups = {k: v for k, v in groups.items() if len(v) > 1}
+    if not dup_groups:
+        print(f"  ✅ 중복 항목 없음")
+        return 0
+
+    print(f"  중복 그룹 {len(dup_groups)}개 발견")
+    for (title, date_val), page_ids in dup_groups.items():
+        for pid in page_ids[1:]:  # 첫 번째 유지, 나머지 아카이브
+            try:
+                _req("PATCH", f"/pages/{pid}", token, {"archived": True})
+                removed += 1
+                print(f"  🗑️  중복 삭제: {title[:50]} ({date_val}) [{pid[:8]}...]")
+            except Exception as e:
+                print(f"  ❌ 삭제 실패: {title[:45]} → {e}")
+
+    print(f"  → 중복 항목 총 {removed}건 삭제 완료")
+    return removed
+
+
 def upload(items: list[dict]) -> dict[str, int]:
     token = os.environ["NOTION_TOKEN"]
     db_id = os.environ["NOTION_DATABASE_ID"].replace("-", "")
