@@ -96,9 +96,13 @@ if __name__ == "__main__":
     parser_args = argparse.ArgumentParser(description="AI 세미나/강의 정보 수집 에이전트 (무료)")
     parser_args.add_argument("--skip-notion", action="store_true")
     parser_args.add_argument("--notion-only", action="store_true")
+    parser_args.add_argument("--dedup", action="store_true", help="Notion DB 기존 중복 항목 제거")
     args = parser_args.parse_args()
 
-    if args.notion_only:
+    if args.dedup:
+        _check_env("NOTION_TOKEN", "NOTION_DATABASE_ID")
+        notion_client.deduplicate_existing()
+    elif args.notion_only:
         run_notion_only()
     else:
         run_crawl_and_upload(skip_notion=args.skip_notion)
