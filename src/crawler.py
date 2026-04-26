@@ -47,6 +47,24 @@ class PageResult:
     relevance_tag: str
 
 
+def _ddgs_search(query: str, max_results: int, retries: int = 3) -> list[str]:
+    """DuckDuckGo 검색 — 실패 시 백오프 재시도, 마지막엔 lite 백엔드 시도."""
+    for attempt in range(retries):
+        backend = "lite" if attempt == retries - 1 else "auto"
+        try:
+            with DDGS() as ddgs:
+                hits = ddgs.text(query, max_results=max_results, backend=backend)
+            return [h["href"] for h in (hits or []) if h.get("href")]
+        except Exception as e:
+            wait = REQUEST_DELAY_SEC * (2 ** attempt) * 2
+            if attempt < retries - 1:
+                print(f"    ⚠️  DuckDuckGo 오류 ({attempt+1}/{retries}), {wait:.0f}s 대기: {e}")
+                time.sleep(wait)
+            else:
+                print(f"    ⚠️  DuckDuckGo 검색 실패 (포기): {e}")
+    return []
+
+
 def _is_skippable(url: str) -> bool:
     return any(d in url for d in SKIP_DOMAINS)
 
@@ -92,13 +110,8 @@ def crawl_category(category: dict) -> list[PageResult]:
     for query in category["queries"]:
         print(f"    🔍 {query[:55]}...")
 
-        try:
-            with DDGS() as ddgs:
-                hits = ddgs.text(query, max_results=SEARCH_RESULTS_PER_QUERY)
-            urls = [h["href"] for h in hits if h.get("href")]
-        except Exception as e:
-            print(f"    ⚠️  DuckDuckGo 검색 오류: {e}")
-            time.sleep(REQUEST_DELAY_SEC * 2)
+        urls = _ddgs_search(query, SEARCH_RESULTS_PER_QUERY)
+        if not urls:
             continue
 
         for url in urls:
