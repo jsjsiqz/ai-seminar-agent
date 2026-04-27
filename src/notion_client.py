@@ -181,12 +181,12 @@ def remove_expired() -> int:
 
 
 def deduplicate_existing() -> int:
-    """기존 Notion DB에서 (제목+날짜) 기준 중복 항목을 찾아 아카이브."""
+    """기존 Notion DB에서 URL 또는 (제목+날짜) 기준 중복 항목을 찾아 아카이브."""
     token = os.environ["NOTION_TOKEN"]
     db_id = os.environ["NOTION_DATABASE_ID"].replace("-", "")
 
-    # 전체 페이지 수집
-    groups: dict[tuple, list[str]] = {}  # (title, date) → [page_id, ...]
+    by_title_date: dict[tuple, list[str]] = {}
+    by_url: dict[str, list[str]] = {}
     body: dict = {"page_size": 100}
     print(f"\n  🔍 기존 DB 중복 분석 중...")
     while True:
@@ -204,31 +204,46 @@ def deduplicate_existing() -> int:
             date_rt = props.get("날짜", {}).get("rich_text", [])
             date_val = (date_rt[0].get("plain_text", "") if date_rt else "").strip()[:200]
 
-            if not title_val:
-                continue
-            key = (title_val, date_val)
-            groups.setdefault(key, []).append(pid)
+            url_val = (props.get("URL", {}).get("url") or "").strip()
+
+            if title_val:
+                by_title_date.setdefault((title_val, date_val), []).append(pid)
+            if url_val:
+                by_url.setdefault(url_val, []).append(pid)
 
         if not res.get("has_more"):
             break
         body["start_cursor"] = res["next_cursor"]
 
-    # 중복 그룹 처리: 첫 번째만 남기고 나머지 아카이브
-    removed = 0
-    dup_groups = {k: v for k, v in groups.items() if len(v) > 1}
-    if not dup_groups:
+    # URL 기준 중복에서 먼저 제거 대상 수집 (제목이 달라도 URL 같으면 중복)
+    to_archive: set[str] = set()
+    for url_val, pids in by_url.items():
+        if len(pids) > 1:
+            for pid in pids[1:]:
+                to_archive.add(pid)
+
+    # (제목+날짜) 기준 중복 추가
+    for (title_val, date_val), pids in by_title_date.items():
+        if len(pids) > 1:
+            for pid in pids[1:]:
+                to_archive.add(pid)
+
+    dup_url_count = sum(1 for v in by_url.values() if len(v) > 1)
+    dup_td_count  = sum(1 for v in by_title_date.values() if len(v) > 1)
+
+    if not to_archive:
         print(f"  ✅ 중복 항목 없음")
         return 0
 
-    print(f"  중복 그룹 {len(dup_groups)}개 발견")
-    for (title, date_val), page_ids in dup_groups.items():
-        for pid in page_ids[1:]:  # 첫 번째 유지, 나머지 아카이브
-            try:
-                _req("PATCH", f"/pages/{pid}", token, {"archived": True})
-                removed += 1
-                print(f"  🗑️  중복 삭제: {title[:50]} ({date_val}) [{pid[:8]}...]")
-            except Exception as e:
-                print(f"  ❌ 삭제 실패: {title[:45]} → {e}")
+    print(f"  URL 중복 그룹: {dup_url_count}개 / 제목+날짜 중복 그룹: {dup_td_count}개 → 총 {len(to_archive)}건 제거 예정")
+    removed = 0
+    for pid in to_archive:
+        try:
+            _req("PATCH", f"/pages/{pid}", token, {"archived": True})
+            removed += 1
+            print(f"  🗑️  중복 삭제: [{pid[:8]}...]")
+        except Exception as e:
+            print(f"  ❌ 삭제 실패: {pid[:8]} → {e}")
 
     print(f"  → 중복 항목 총 {removed}건 삭제 완료")
     return removed

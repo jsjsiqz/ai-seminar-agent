@@ -47,18 +47,22 @@ class PageResult:
     relevance_tag: str
 
 
-def _ddgs_search(query: str, max_results: int, retries: int = 3) -> list[str]:
-    """DuckDuckGo 검색 — 실패 시 백오프 재시도, 마지막엔 lite 백엔드 시도."""
-    for attempt in range(retries):
-        backend = "lite" if attempt == retries - 1 else "auto"
+_DDGS_BACKENDS = ["html", "api", "html"]  # lite는 Yahoo 중계라 CI에서 차단됨
+
+
+def _ddgs_search(query: str, max_results: int) -> list[str]:
+    """DuckDuckGo 검색 — html→api 순으로 재시도. lite(Yahoo) 백엔드 사용 안 함."""
+    for attempt, backend in enumerate(_DDGS_BACKENDS):
         try:
             with DDGS() as ddgs:
                 hits = ddgs.text(query, max_results=max_results, backend=backend)
-            return [h["href"] for h in (hits or []) if h.get("href")]
+            urls = [h["href"] for h in (hits or []) if h.get("href")]
+            if urls:
+                return urls
         except Exception as e:
             wait = REQUEST_DELAY_SEC * (2 ** attempt) * 2
-            if attempt < retries - 1:
-                print(f"    ⚠️  DuckDuckGo 오류 ({attempt+1}/{retries}), {wait:.0f}s 대기: {e}")
+            if attempt < len(_DDGS_BACKENDS) - 1:
+                print(f"    ⚠️  DuckDuckGo 오류 ({attempt+1}/{len(_DDGS_BACKENDS)}, {backend}), {wait:.0f}s 대기: {e}")
                 time.sleep(wait)
             else:
                 print(f"    ⚠️  DuckDuckGo 검색 실패 (포기): {e}")
